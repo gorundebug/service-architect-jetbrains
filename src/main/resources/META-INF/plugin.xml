@@ -1,0 +1,12 @@
+<idea-plugin>
+  <id>com.gorundebug.servicearchitect</id>
+  <name>Service Architect</name>
+  <vendor>gorundebug</vendor>
+  <description>Read-only graph navigation for typed Service Architect Python projects.</description>
+  <idea-version since-build="261"/>
+  <depends>com.intellij.modules.platform</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="Service Architect" anchor="right"
+                factoryClass="com.gorundebug.servicearchitect.GraphToolWindowFactory"/>
+  </extensions>
+</idea-plugin>
