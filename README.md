@@ -9,6 +9,10 @@ Open a project containing `.service-architect/project.yaml` (possibly nested), t
 open the **Service Architect** tool window. Select a Python project if the workspace
 contains several and press **Refresh** after changing Python source.
 Click a node or link to open its authoring expression in the editor.
+Right-click a graph node (or use Shift+F10 / the Context Menu key on the selected
+node) for **Python Code**, **Show Component** and **Show Pipeline**. Scope actions
+appear only for actual membership, select the corresponding sidebar scope, and
+never modify the Python model.
 The tool window and its context menu also expose **Materialize DSL** (a reviewable
 `python-dsl/model/` snapshot) and **Generate + merge**. Enter the generated project
 destination in the field beside the buttons; this path is passed to the existing
