@@ -1,11 +1,9 @@
 package com.gorundebug.servicearchitect;
 
+import com.intellij.util.io.HttpRequests;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
@@ -127,18 +125,17 @@ final class CliEnvironment {
         if (Files.isRegularFile(uv) && Files.isExecutable(uv)) return uv;
         progress.accept("Downloading uv " + UV_VERSION + " from Astral...");
         Path installer = root.resolve(WINDOWS ? "install-uv.ps1" : "install-uv.sh");
-        URI uri = URI.create("https://astral.sh/uv/" + UV_VERSION + (WINDOWS ? "/install.ps1" : "/install.sh"));
-        try (HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20))
-                .followRedirects(HttpClient.Redirect.NORMAL).build()) {
-            HttpResponse<InputStream> response = client.send(HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofSeconds(45)).GET().build(), HttpResponse.BodyHandlers.ofInputStream());
-            try (InputStream body = response.body()) {
-                if (response.statusCode() != 200) throw new IOException("Cannot download uv installer: HTTP " + response.statusCode());
+        String url = "https://astral.sh/uv/" + UV_VERSION + (WINDOWS ? "/install.ps1" : "/install.sh");
+        HttpRequests.request(url).useProxy(true).connectTimeout(20_000).readTimeout(45_000).connect(request -> {
+            checkCancelled(cancelled);
+            try (InputStream body = request.getInputStream()) {
                 byte[] bytes = body.readNBytes(1024 * 1024 + 1);
                 if (bytes.length > 1024 * 1024) throw new IOException("Unexpected uv installer size");
+                checkCancelled(cancelled);
                 Files.write(installer, bytes);
             }
-        }
+            return null;
+        });
         checkCancelled(cancelled);
         progress.accept("Installing uv in the plugin's private directory...");
         List<String> command;
