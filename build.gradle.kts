@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.gorundebug.servicearchitect"
-version = "0.1.10"
+version = "0.1.11"
 
 repositories {
     mavenCentral()

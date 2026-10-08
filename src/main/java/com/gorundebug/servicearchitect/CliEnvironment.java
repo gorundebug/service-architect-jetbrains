@@ -164,6 +164,7 @@ final class CliEnvironment {
         builder.environment().put("UV_PYTHON_DOWNLOADS", "automatic");
         builder.environment().put("UV_NO_PROGRESS", "1");
         builder.environment().putAll(additionalEnvironment);
+        boolean proxyCredentials = CliProxyEnvironment.configure(builder.environment());
         Process process = builder.start();
         process.getOutputStream().close();
         CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
@@ -186,7 +187,18 @@ final class CliEnvironment {
             }
             checkCancelled(cancelled);
             String log = output.get(5, TimeUnit.SECONDS);
-            if (process.exitValue() != 0) throw new IOException("Setup command failed (exit " + process.exitValue() + "):\n" + log);
+            if (process.exitValue() != 0) {
+                // A downloader may echo proxy URLs or fragments of credentials. Do not expose
+                // its raw output when proxy authentication is configured, even if truncated.
+                String detail = log;
+                if (proxyCredentials) {
+                    detail = log.contains("407")
+                        ? "The proxy rejected authentication (HTTP 407). Check Settings > HTTP Proxy."
+                        : "Setup failed with an authenticated proxy. Check proxy access and system certificates. "
+                            + "Command output is hidden to protect proxy credentials.";
+                }
+                throw new IOException("Setup command failed (exit " + process.exitValue() + "):\n" + detail);
+            }
         } finally {
             if (process.isAlive()) {
                 process.descendants().forEach(ProcessHandle::destroyForcibly);
