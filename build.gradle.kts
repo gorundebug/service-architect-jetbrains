@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.gorundebug.servicearchitect"
-version = "0.1.11"
+version = "0.1.12"
 
 repositories {
     mavenCentral()
@@ -12,11 +12,15 @@ repositories {
 }
 
 dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     intellijPlatform {
         val localIde = providers.gradleProperty("localIde").orNull
         if (localIde != null) local(localIde) else goland("2026.1.3")
     }
 }
+
+tasks.test { useJUnitPlatform() }
 
 tasks.withType<JavaCompile>().configureEach {
     options.release.set(21)

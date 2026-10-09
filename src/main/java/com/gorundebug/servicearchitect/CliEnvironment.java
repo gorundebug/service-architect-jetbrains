@@ -9,6 +9,7 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -22,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.zip.ZipInputStream;
 
 /** Installs only after the user explicitly requests setup. Never modifies project environments. */
 final class CliEnvironment {
@@ -123,32 +125,77 @@ final class CliEnvironment {
         Path bin = root.resolve("tools");
         Path uv = bin.resolve(WINDOWS ? "uv.exe" : "uv");
         if (Files.isRegularFile(uv) && Files.isExecutable(uv)) return uv;
-        progress.accept("Downloading uv " + UV_VERSION + " from Astral...");
-        Path installer = root.resolve(WINDOWS ? "install-uv.ps1" : "install-uv.sh");
-        String url = "https://astral.sh/uv/" + UV_VERSION + (WINDOWS ? "/install.ps1" : "/install.sh");
-        HttpRequests.request(url).useProxy(true).connectTimeout(20_000).readTimeout(45_000).connect(request -> {
+        String arch = switch (System.getProperty("os.arch").toLowerCase(Locale.ROOT)) {
+            case "aarch64", "arm64" -> "aarch64";
+            case "amd64", "x86_64" -> "x86_64";
+            default -> throw new IOException("Automatic CLI setup does not support this processor: " + System.getProperty("os.arch"));
+        };
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        String platform;
+        if (WINDOWS) platform = "pc-windows-msvc";
+        else if (os.contains("mac")) platform = "apple-darwin";
+        else if (os.contains("linux")) platform = "unknown-linux-musl";
+        else throw new IOException("Automatic CLI setup does not support this operating system: " + os);
+        String archiveName = "uv-" + arch + "-" + platform;
+        Files.createDirectories(bin);
+        Path staging = Files.createTempDirectory(bin, ".uv-install-");
+        Path archive = staging.resolve(WINDOWS ? "download.zip" : "download.tar.gz");
+        Path executable = staging.resolve(WINDOWS ? "uv.exe" : "uv");
+        try {
+            progress.accept("Downloading uv " + UV_VERSION + " using IDE network settings...");
+            String url = "https://github.com/astral-sh/uv/releases/download/" + UV_VERSION + "/"
+                + archiveName + (WINDOWS ? ".zip" : ".tar.gz");
+            HttpRequests.request(url).useProxy(true).connectTimeout(20_000).readTimeout(45_000).connect(request -> {
+                try (InputStream body = request.getInputStream(); var output = Files.newOutputStream(archive)) {
+                    copyBounded(body, output, 64L * 1024 * 1024, cancelled);
+                }
+                return null;
+            });
             checkCancelled(cancelled);
-            try (InputStream body = request.getInputStream()) {
-                byte[] bytes = body.readNBytes(1024 * 1024 + 1);
-                if (bytes.length > 1024 * 1024) throw new IOException("Unexpected uv installer size");
-                checkCancelled(cancelled);
-                Files.write(installer, bytes);
+            progress.accept("Installing uv in the plugin's private directory...");
+            if (WINDOWS) {
+                boolean found = false;
+                try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(archive))) {
+                    for (var entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+                        checkCancelled(cancelled);
+                        if (!entry.isDirectory() && (entry.getName().equals("uv.exe") || entry.getName().equals(archiveName + "/uv.exe"))) {
+                            if (found) throw new IOException("Duplicate uv executable in release archive");
+                            try (var output = Files.newOutputStream(executable)) {
+                                copyBounded(zip, output, 128L * 1024 * 1024, cancelled);
+                            }
+                            found = true;
+                        }
+                    }
+                }
+            } else {
+                run(List.of("/usr/bin/tar", "-xzf", archive.toString(), "-C", staging.toString(),
+                    "--strip-components=1", archiveName + "/uv"), root, Map.of(), cancelled);
+                if (!executable.toFile().setExecutable(true, true)) throw new IOException("Cannot make uv executable");
             }
-            return null;
-        });
-        checkCancelled(cancelled);
-        progress.accept("Installing uv in the plugin's private directory...");
-        List<String> command;
-        if (WINDOWS) {
-            Path powershell = Path.of(System.getenv().getOrDefault("SystemRoot", "C:\\Windows"),
-                "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
-            command = List.of(powershell.toString(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", installer.toString());
-        } else {
-            command = List.of("/bin/sh", installer.toString());
+            if (!Files.isRegularFile(executable, LinkOption.NOFOLLOW_LINKS) || !Files.isExecutable(executable)) {
+                throw new IOException("uv release archive did not contain an executable.");
+            }
+            checkCancelled(cancelled);
+            Files.move(executable, uv, StandardCopyOption.REPLACE_EXISTING);
+            return uv;
+        } finally {
+            Files.deleteIfExists(executable);
+            Files.deleteIfExists(archive);
+            Files.deleteIfExists(staging);
         }
-        run(command, root, Map.of("UV_UNMANAGED_INSTALL", bin.toString(), "UV_NO_MODIFY_PATH", "1"), cancelled);
-        if (!Files.isRegularFile(uv) || !Files.isExecutable(uv)) throw new IOException("uv installation did not produce an executable.");
-        return uv;
+    }
+
+    private static void copyBounded(InputStream input, java.io.OutputStream output, long limit,
+                                    BooleanSupplier cancelled) throws IOException {
+        byte[] buffer = new byte[64 * 1024];
+        long total = 0;
+        int count;
+        while ((count = input.read(buffer)) != -1) {
+            checkCancelled(cancelled);
+            total += count;
+            if (total > limit) throw new IOException("Unexpected uv release size");
+            output.write(buffer, 0, count);
+        }
     }
 
     private static void run(List<String> command, Path root, Map<String, String> additionalEnvironment,
@@ -164,7 +211,13 @@ final class CliEnvironment {
         builder.environment().put("UV_PYTHON_DOWNLOADS", "automatic");
         builder.environment().put("UV_NO_PROGRESS", "1");
         builder.environment().putAll(additionalEnvironment);
-        boolean proxyCredentials = CliProxyEnvironment.configure(builder.environment());
+        try (CliProxyEnvironment proxy = CliProxyEnvironment.configure(builder.environment())) {
+            runProcess(builder, cancelled, proxy);
+        }
+    }
+
+    private static void runProcess(ProcessBuilder builder, BooleanSupplier cancelled,
+                                   CliProxyEnvironment proxy) throws Exception {
         Process process = builder.start();
         process.getOutputStream().close();
         CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
@@ -188,15 +241,9 @@ final class CliEnvironment {
             checkCancelled(cancelled);
             String log = output.get(5, TimeUnit.SECONDS);
             if (process.exitValue() != 0) {
-                // A downloader may echo proxy URLs or fragments of credentials. Do not expose
-                // its raw output when proxy authentication is configured, even if truncated.
-                String detail = log;
-                if (proxyCredentials) {
-                    detail = log.contains("407")
-                        ? "The proxy rejected authentication (HTTP 407). Check Settings > HTTP Proxy."
-                        : "Setup failed with an authenticated proxy. Check proxy access and system certificates. "
-                            + "Command output is hidden to protect proxy credentials.";
-                }
+                // Corporate credentials stay in the bridge; redact its process-local token.
+                String detail = proxy.redact(log);
+                if (!proxy.diagnostic().isBlank()) detail += "\n" + proxy.diagnostic();
                 throw new IOException("Setup command failed (exit " + process.exitValue() + "):\n" + detail);
             }
         } finally {

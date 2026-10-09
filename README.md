@@ -77,6 +77,17 @@ from Astral into its own directory. Setup shows progress, supports cancellation
 and can be retried. Internet access is required. Shell profiles and the project's
 environment are not modified.
 
+Setup uses the IDE's manual proxy, PAC and bypass rules for each destination.
+The uv release archive is downloaded through the IDE HTTP client; Python and
+dependency downloads use an authenticated, temporary loopback bridge. An HTTP
+proxy's Basic challenge is handled explicitly through the IDE/JVM authenticator,
+without changing global JVM authentication settings. Incorrect credentials fail
+after a bounded retry. Other authentication schemes retain the JVM path and
+depend on the IDE/runtime's support. Corporate credentials never enter the child
+process environment or command line. HTTPS remains encrypted end-to-end through
+the tunnel; certificate validation is not disabled. Corporate CA certificates
+must be trusted by the system. The bridge closes when setup finishes or is cancelled.
+
 CLI selection uses an explicit **CLI settings...** override first, then the nearest
 project/ancestor `.venv`, then `sa-dsl` on `PATH`, then the private plugin environment.
 The settings override accepts the absolute path to `sa-dsl` or an environment
@@ -84,7 +95,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.6`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.9`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).
