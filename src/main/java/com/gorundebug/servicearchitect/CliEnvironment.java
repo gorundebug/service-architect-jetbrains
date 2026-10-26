@@ -27,7 +27,7 @@ import java.util.zip.ZipInputStream;
 
 /** Installs only after the user explicitly requests setup. Never modifies project environments. */
 final class CliEnvironment {
-    static final String VERSION = "0.1.9";
+    static final String VERSION = "0.1.14";
     private static final String UV_VERSION = "0.11.22";
     private static final boolean WINDOWS = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
 

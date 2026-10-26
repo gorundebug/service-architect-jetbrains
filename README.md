@@ -61,6 +61,9 @@ The search root is the existing generated-project destination field, or
 checked-out shared modules under that root and in the IDE project. Generate/merge
 first if the implementation has not been created, and refresh after DSL changes.
 Python Code and ordinary node/link clicks continue to open authoring Python.
+The plugin bundles the updated CLI in a new versioned private environment. An
+explicitly selected project/global CLI must also be updated; older snapshots
+continue to support Python navigation but do not advertise Implementation.
 The tool window and its context menu also expose **Materialize DSL** (a reviewable
 `python-dsl/model/` snapshot) and **Generate + merge**. Enter the generated project
 destination in the field beside the buttons; this path is passed to the existing
