@@ -47,7 +47,7 @@ final class ImplementationNavigation {
         return symbols.stream().anyMatch(symbol -> normalized.equalsIgnoreCase(symbol.replace("_", "").replace("-", "")));
     }
 
-    private static boolean allowed(Path root, VirtualFile file, List<String> extensions) {
+    static boolean allowed(Path root, VirtualFile file, List<String> extensions) {
         if (file == null || !extensions.contains(file.getExtension())) return false;
         try {
             Path real = file.toNioPath().toRealPath();

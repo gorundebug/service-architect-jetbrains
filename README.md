@@ -64,6 +64,17 @@ Python Code and ordinary node/link clicks continue to open authoring Python.
 The plugin bundles the updated CLI in a new versioned private environment. An
 explicitly selected project/global CLI must also be updated; older snapshots
 continue to support Python navigation but do not advertise Implementation.
+
+With the graph loaded, moving the caret in authoring Python or business code
+highlights its nodes without moving the camera. **Service Architect: Show in Graph**
+is available in Find Action, the editor context menu and the tool-window toolbar;
+it explicitly focuses a node, offering a chooser for shared implementations.
+Factory bodies highlight all instances, individual DSL calls only their instances.
+Save and Refresh after authoring changes: stale ranges are cleared, never guessed.
+Business-code matching uses installed language support and the generated-project
+directory. File-level matches are used when symbols are unavailable; ambiguous
+files retain all related nodes. This requires no generator/source-code changes.
+
 The tool window and its context menu also expose **Materialize DSL** (a reviewable
 `python-dsl/model/` snapshot) and **Generate + merge**. Enter the generated project
 destination in the field beside the buttons; this path is passed to the existing

@@ -55,6 +55,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 final class GraphToolWindow implements Disposable {
+    static final com.intellij.openapi.util.Key<GraphToolWindow> INSTANCE = com.intellij.openapi.util.Key.create("serviceArchitect.graph");
+    private EditorGraphNavigation editorNavigation;
     private final Project project;
     private final JPanel panel = new JPanel(new BorderLayout());
     private final JComboBox<ProjectChoice> projects = new JComboBox<>();
@@ -84,6 +86,7 @@ final class GraphToolWindow implements Disposable {
 
     GraphToolWindow(Project project) {
         this.project = project;
+        project.putUserData(INSTANCE, this);
         JPanel toolbar = new JPanel(new BorderLayout());
         toolbar.add(new JLabel("Python project path: "), BorderLayout.WEST);
         projects.setToolTipText("Directory containing the selected .service-architect/project.yaml");
@@ -148,6 +151,9 @@ final class GraphToolWindow implements Disposable {
         JButton materialize = new JButton("Materialize DSL");
         materialize.addActionListener(event -> runAction("ide-materialize", "python-dsl"));
         actions.add(materialize);
+        JButton showInGraph = new JButton("Show in Graph");
+        showInGraph.addActionListener(event -> showInGraph());
+        actions.add(showInGraph);
         panel.add(actions, BorderLayout.SOUTH);
         JPopupMenu contextMenu = new JPopupMenu();
         generateItem.addActionListener(event -> runAction("ide-generate", outputDirectory.getText()));
@@ -165,6 +171,16 @@ final class GraphToolWindow implements Disposable {
             return;
         }
         browser = new JBCefBrowser();
+        editorNavigation = new EditorGraphNavigation(project, () -> selectedRoot, () -> implementationSnapshot,
+            () -> outputDirectory.getText(), event -> {
+                if (disposed || !snapshotRevision.equals(event.get("revision").getAsString())) return;
+                browser.getCefBrowser().executeJavaScript("window.dispatchEvent(new CustomEvent('service-architect:editor-selection',{detail:" + event + "}));", browser.getCefBrowser().getURL(), 0);
+                if (event.has("focus")) {
+                    var window = com.intellij.openapi.wm.ToolWindowManager.getInstance(project).getToolWindow("Service Architect");
+                    if (window != null) window.show(null);
+                }
+            });
+        com.intellij.openapi.util.Disposer.register(this, editorNavigation);
         projects.addActionListener(event -> {
             if (refreshingProjects) return;
             ProjectChoice selected = (ProjectChoice) projects.getSelectedItem();
@@ -638,6 +654,7 @@ final class GraphToolWindow implements Disposable {
                         setup.setVisible(false);
                         snapshotRevision = snapshot.get("revision").getAsString();
                         implementationSnapshot = snapshot;
+                        editorNavigation.refresh();
                         browser.getCefBrowser().executeJavaScript(
                             "window.dispatchEvent(new CustomEvent('service-architect:snapshot',{detail:" + snapshot + "}));",
                             browser.getCefBrowser().getURL(), 0);
@@ -703,9 +720,12 @@ final class GraphToolWindow implements Disposable {
         });
     }
 
+    void showInGraph() { if (editorNavigation != null) editorNavigation.show(); }
+
     @Override
     public void dispose() {
         disposed = true;
+        if (project.getUserData(INSTANCE) == this) project.putUserData(INSTANCE, null);
         if (readyQuery != null) readyQuery.dispose();
         if (navigateQuery != null) navigateQuery.dispose();
         if (browser != null) browser.dispose();
