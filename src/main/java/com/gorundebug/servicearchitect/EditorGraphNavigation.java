@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -86,6 +87,16 @@ final class EditorGraphNavigation implements Disposable {
     }
 
     void show() { timer.stop(); update(true); }
+
+    void showNodes(JsonObject current, List<Node> nodes, BooleanSupplier fresh) {
+        timer.stop();
+        long request = revision.incrementAndGet();
+        if (nodes.isEmpty() || !isCurrent(request, current) || !fresh.getAsBoolean()) return;
+        if (nodes.size() == 1) send(current, nodes, nodes.getFirst());
+        else JBPopupFactory.getInstance().createPopupChooserBuilder(nodes).setTitle("Show in Graph — select a node")
+            .setItemChosenCallback(node -> { if (isCurrent(request, current) && fresh.getAsBoolean()) send(current, nodes, node); })
+            .createPopup().showInFocusCenter();
+    }
 
     private void update(boolean focus) {
         if (disposed || project.isDisposed()) return;

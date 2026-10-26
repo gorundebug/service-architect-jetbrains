@@ -75,6 +75,14 @@ Business-code matching uses installed language support and the generated-project
 directory. File-level matches are used when symbols are unavailable; ambiguous
 files retain all related nodes. This requires no generator/source-code changes.
 
+Clickable graph icons in the editor gutter mark actual Python node-creation
+expressions and resolved business declarations. Click the icon to show its node;
+shared factories/implementations or several nodes on one line offer a chooser.
+Mappings come from the currently loaded graph and installed language support,
+not guessed filenames. Edited DSL hides stale markers until Refresh. The graph
+must be loaded in the tool window first. This editor-only update reuses the
+existing private CLI environment; it does not require installing it again.
+
 The tool window and its context menu also expose **Materialize DSL** (a reviewable
 `python-dsl/model/` snapshot) and **Generate + merge**. Enter the generated project
 destination in the field beside the buttons; this path is passed to the existing
@@ -124,7 +132,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.9`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.15`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).

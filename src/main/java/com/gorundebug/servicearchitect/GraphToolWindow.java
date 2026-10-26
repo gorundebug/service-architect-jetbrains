@@ -57,6 +57,9 @@ import java.util.function.Consumer;
 final class GraphToolWindow implements Disposable {
     static final com.intellij.openapi.util.Key<GraphToolWindow> INSTANCE = com.intellij.openapi.util.Key.create("serviceArchitect.graph");
     private EditorGraphNavigation editorNavigation;
+    private volatile String markerOutput = "";
+    private final java.util.Map<com.intellij.psi.PsiFile, Boolean> markerFiles =
+        java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
     private final Project project;
     private final JPanel panel = new JPanel(new BorderLayout());
     private final JComboBox<ProjectChoice> projects = new JComboBox<>();
@@ -142,6 +145,12 @@ final class GraphToolWindow implements Disposable {
         actions.add(new JLabel("Generated project path:"));
         outputDirectory.setToolTipText("Leave empty for the manifest destination (workspace root for new projects), or enter a path relative to the SA project");
         actions.add(outputDirectory);
+        outputDirectory.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private void changed() { markerOutput = outputDirectory.getText(); restartMarkers(); }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent event) { changed(); }
+        });
         generate.addActionListener(event -> runAction("ide-generate", outputDirectory.getText()));
         actions.add(generate);
         JButton generatorSettings = new JButton("Generator access (.env)");
@@ -654,6 +663,7 @@ final class GraphToolWindow implements Disposable {
                         setup.setVisible(false);
                         snapshotRevision = snapshot.get("revision").getAsString();
                         implementationSnapshot = snapshot;
+                        restartMarkers();
                         editorNavigation.refresh();
                         browser.getCefBrowser().executeJavaScript(
                             "window.dispatchEvent(new CustomEvent('service-architect:snapshot',{detail:" + snapshot + "}));",
@@ -722,9 +732,43 @@ final class GraphToolWindow implements Disposable {
 
     void showInGraph() { if (editorNavigation != null) editorNavigation.show(); }
 
+    GraphLineMarkerProvider.Context markerContext() {
+        JsonObject current = implementationSnapshot;
+        Path root = selectedRoot;
+        if (disposed || current == null || root == null || !snapshotRevision.equals(current.get("revision").getAsString())) return null;
+        return new GraphLineMarkerProvider.Context(root, current, markerOutput);
+    }
+
+    void showMarker(GraphLineMarkerProvider.Context expected, com.intellij.openapi.editor.Document document,
+                    long stamp, List<EditorGraphNavigation.Node> nodes) {
+        if (editorNavigation == null) return;
+        editorNavigation.showNodes(expected.snapshot(), nodes,
+            () -> expected.equals(markerContext()) && document.getModificationStamp() == stamp);
+    }
+
+    private void restartMarkers() {
+        clearMarkerCaches();
+        if (!disposed && !project.isDisposed()) com.intellij.codeInsight.daemon.DaemonCodeAnalyzer.getInstance(project).restart();
+    }
+
+    void rememberMarkerFile(com.intellij.psi.PsiFile file) {
+        synchronized (markerFiles) {
+            if (disposed) GraphLineMarkerProvider.clearCache(file);
+            else markerFiles.put(file, Boolean.TRUE);
+        }
+    }
+
+    private void clearMarkerCaches() {
+        synchronized (markerFiles) {
+            for (var file : markerFiles.keySet()) GraphLineMarkerProvider.clearCache(file);
+            markerFiles.clear();
+        }
+    }
+
     @Override
     public void dispose() {
         disposed = true;
+        clearMarkerCaches();
         if (project.getUserData(INSTANCE) == this) project.putUserData(INSTANCE, null);
         if (readyQuery != null) readyQuery.dispose();
         if (navigateQuery != null) navigateQuery.dispose();
