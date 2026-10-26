@@ -46,6 +46,21 @@ Right-click a graph node (or use Shift+F10 / the Context Menu key on the selecte
 node) for **Python Code**, **Show Component** and **Show Pipeline**. Scope actions
 appear only for actual membership, select the corresponding sidebar scope, and
 never modify the Python model.
+
+**Implementation** opens the business implementation of a node. Identities
+(function name, source/sink role, package, module owner and language) come from
+the evaluated Python DSL; the generator is not involved. The plugin queries
+JetBrains symbol/class contributors after indexing, using whichever language
+support is installed in the IDE. Go, C++ userver/Coro, Rust, Python and TypeScript
+are supported. This does not install language support into an IDE that lacks it.
+Multiple matches open a chooser. If a symbol is unavailable, matching source
+files are offered with an explicit file-only label, not a guessed source line.
+
+The search root is the existing generated-project destination field, or
+`generation.outputDirectory` in the manifest when the field is empty. Include
+checked-out shared modules under that root and in the IDE project. Generate/merge
+first if the implementation has not been created, and refresh after DSL changes.
+Python Code and ordinary node/link clicks continue to open authoring Python.
 The tool window and its context menu also expose **Materialize DSL** (a reviewable
 `python-dsl/model/` snapshot) and **Generate + merge**. Enter the generated project
 destination in the field beside the buttons; this path is passed to the existing

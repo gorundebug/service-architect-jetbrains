@@ -79,6 +79,7 @@ final class GraphToolWindow implements Disposable {
     private volatile Path selectedRoot;
     private boolean refreshingProjects;
     private volatile String snapshotRevision = "";
+    private volatile JsonObject implementationSnapshot;
     private volatile boolean disposed;
 
     GraphToolWindow(Project project) {
@@ -636,6 +637,7 @@ final class GraphToolWindow implements Disposable {
                         cliStatus.setText(" ");
                         setup.setVisible(false);
                         snapshotRevision = snapshot.get("revision").getAsString();
+                        implementationSnapshot = snapshot;
                         browser.getCefBrowser().executeJavaScript(
                             "window.dispatchEvent(new CustomEvent('service-architect:snapshot',{detail:" + snapshot + "}));",
                             browser.getCefBrowser().getURL(), 0);
@@ -654,6 +656,18 @@ final class GraphToolWindow implements Disposable {
             try {
                 JsonObject item = JsonParser.parseString(request).getAsJsonObject();
                 if (!snapshotRevision.equals(item.get("revision").getAsString())) return;
+                if (item.has("action")) {
+                    if (!item.get("action").getAsString().equals("implementation") || !item.get("kind").getAsString().equals("node"))
+                        throw new IOException("Unsupported graph action");
+                    JsonObject selectedSnapshot = implementationSnapshot;
+                    Path authoringRoot = root();
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        if (!disposed && selectedSnapshot != null && snapshotRevision.equals(item.get("revision").getAsString()))
+                            ImplementationNavigation.open(project, authoringRoot, selectedSnapshot, item, outputDirectory.getText(),
+                                () -> !disposed && snapshotRevision.equals(item.get("revision").getAsString()));
+                    });
+                    return;
+                }
                 String kind = item.get("kind").getAsString();
                 if (!kind.equals("node") && !kind.equals("link")) throw new IOException("Invalid selection");
                 Path root = root();
