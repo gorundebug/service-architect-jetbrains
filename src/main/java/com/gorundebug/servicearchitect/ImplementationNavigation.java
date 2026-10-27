@@ -18,6 +18,7 @@ import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,14 +50,55 @@ final class ImplementationNavigation {
 
     static boolean allowed(Path root, VirtualFile file, List<String> extensions) {
         if (file == null || !extensions.contains(file.getExtension())) return false;
+        return allowedPath(root, file.toNioPath());
+    }
+
+    private static boolean allowedPath(Path root, Path file) {
         try {
-            Path real = file.toNioPath().toRealPath();
+            Path real = file.toRealPath();
             if (!real.startsWith(root)) return false;
             for (Path part : root.relativize(real)) {
                 if (List.of(".git", "node_modules", ".venv", "venv", "target", "build", "dist", "vendor", ".dependencies").contains(part.toString())) return false;
             }
             return true;
         } catch (Exception ignored) { return false; }
+    }
+
+    static List<Path> ownerRoots(Path root, JsonObject target) {
+        if (!target.has("owner") || target.get("owner").isJsonNull()) return List.of();
+        String owner = target.get("owner").getAsString().toLowerCase(java.util.Locale.ROOT).replaceAll("\\s", "");
+        if (owner.isEmpty() || owner.equals(".") || owner.equals("..") || owner.contains("/") || owner.contains("\\")) return List.of();
+        boolean module = !target.has("service") || !target.get("owner").equals(target.get("service"));
+        java.util.function.Predicate<Path> matches = path -> {
+            String name = path.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+            return name.equals(owner) || (module && name.startsWith(owner + "_"));
+        };
+        try {
+            Path realRoot = root.toRealPath();
+            if (matches.test(realRoot)) return List.of(realRoot);
+            var result = new java.util.LinkedHashSet<Path>();
+            // Do not recurse into archived workspaces or guess by symbol name.
+            try (var children = Files.list(realRoot)) {
+                for (Path child : children.filter(matches).toList()) {
+                    try {
+                        Path real = child.toRealPath();
+                        if (Files.isDirectory(real) && real.startsWith(realRoot) && !real.equals(realRoot)) result.add(real);
+                    } catch (java.io.IOException ignored) { /* Missing or broken owner symlink. */ }
+                }
+            }
+            return List.copyOf(result);
+        } catch (Exception ignored) { return List.of(); }
+    }
+
+    static boolean allowed(Path root, VirtualFile file, JsonObject target) {
+        return file != null && implementationPath(root, file.toNioPath(), target);
+    }
+
+    static boolean implementationPath(Path root, Path file, JsonObject target) {
+        String name = file.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        if (dot < 0 || !extensions(target.get("language").getAsString()).contains(name.substring(dot + 1))) return false;
+        return ownerRoots(root, target).stream().anyMatch(owner -> allowedPath(owner, file));
     }
 
     private static List<Candidate> find(Project project, Path root, JsonArray targets) {
@@ -68,6 +110,8 @@ final class ImplementationNavigation {
             List<String> symbols = new ArrayList<>();
             for (JsonElement symbol : target.getAsJsonArray("symbols")) symbols.add(symbol.getAsString());
             List<String> extensions = extensions(target.get("language").getAsString());
+            List<Path> owners = ownerRoots(root, target);
+            if (owners.isEmpty()) continue;
             var resolved = new LinkedHashMap<String, Candidate>();
             for (String name : symbols) {
                 for (ChooseByNameContributor contributor : contributors) {
@@ -76,17 +120,17 @@ final class ImplementationNavigation {
                         PsiElement declaration = element.getNavigationElement();
                         if (declaration.getContainingFile() == null) continue;
                         VirtualFile file = declaration.getContainingFile().getVirtualFile();
-                        if (!allowed(root, file, extensions)) continue;
+                        if (owners.stream().noneMatch(owner -> allowed(owner, file, extensions))) continue;
                         int offset = declaration.getTextOffset();
                         String label = item.getName() + " — " + root.relativize(file.toNioPath()) + " [" + target.get("role").getAsString() + "]";
-                        resolved.put(file.getPath() + ":" + offset, new Candidate(file, offset, label));
+                        resolved.put((file.getCanonicalPath() == null ? file.getPath() : file.getCanonicalPath()) + ":" + offset, new Candidate(file, offset, label));
                     }
                 }
             }
             if (resolved.isEmpty()) {
                 for (String extension : extensions) {
                     for (VirtualFile file : FilenameIndex.getAllFilesByExt(project, extension, GlobalSearchScope.projectScope(project))) {
-                        if (!allowed(root, file, extensions) || !basenameMatches(file.getName(), symbols)) continue;
+                        if (owners.stream().noneMatch(owner -> allowed(owner, file, extensions)) || !basenameMatches(file.getName(), symbols)) continue;
                         resolved.put(file.getPath(), new Candidate(file, 0, root.relativize(file.toNioPath()) + " — file match only (symbol unavailable)"));
                     }
                 }

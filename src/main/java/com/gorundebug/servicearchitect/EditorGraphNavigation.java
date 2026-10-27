@@ -234,7 +234,7 @@ final class EditorGraphNavigation implements Disposable {
             for (var node : service.getValue().getAsJsonObject().entrySet()) {
                 for (JsonElement value : node.getValue().getAsJsonArray()) {
                     JsonObject target = value.getAsJsonObject();
-                    if (!ImplementationNavigation.allowed(root, file, ImplementationNavigation.extensions(target.get("language").getAsString()))) continue;
+                    if (!ImplementationNavigation.allowed(root, file, target)) continue;
                     List<String> names = new ArrayList<>();
                     for (JsonElement name : target.getAsJsonArray("symbols")) names.add(name.getAsString());
                     Node identity = new Node(service.getKey(), node.getKey());

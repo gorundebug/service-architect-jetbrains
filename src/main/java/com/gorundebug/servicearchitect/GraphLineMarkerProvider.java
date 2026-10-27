@@ -103,7 +103,7 @@ public final class GraphLineMarkerProvider implements LineMarkerProvider {
                     for (var service : snapshot.getAsJsonObject("implementations").entrySet()) for (var node : service.getValue().getAsJsonObject().entrySet()) {
                         for (JsonElement value : node.getValue().getAsJsonArray()) {
                             JsonObject target = value.getAsJsonObject();
-                            if (!ImplementationNavigation.allowed(generated, file.getVirtualFile(), ImplementationNavigation.extensions(target.get("language").getAsString()))) continue;
+                            if (!ImplementationNavigation.allowed(generated, file.getVirtualFile(), target)) continue;
                             for (JsonElement symbol : target.getAsJsonArray("symbols")) if (name.equals(symbol.getAsString())) {
                                 add(byLine, document.getLineNumber(offset), offset, new EditorGraphNavigation.Node(service.getKey(), node.getKey())); break;
                             }
