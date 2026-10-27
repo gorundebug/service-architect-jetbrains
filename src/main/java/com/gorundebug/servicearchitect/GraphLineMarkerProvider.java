@@ -59,7 +59,7 @@ public final class GraphLineMarkerProvider implements LineMarkerProvider {
         Marker marker = entry.getValue();
         return new LineMarkerInfo<>(element, element.getTextRange(), Icons.GRAPH,
             ignored -> "Show in Graph — " + marker.nodes().size() + " node(s)",
-            (event, ignored) -> view.showMarker(context, document, stamp, marker.nodes()),
+            (event, ignored) -> view.showMarker(context, document, stamp, marker.nodes(), event.getComponent()),
             GutterIconRenderer.Alignment.LEFT, () -> "Service Architect: Show in Graph");
     }
 

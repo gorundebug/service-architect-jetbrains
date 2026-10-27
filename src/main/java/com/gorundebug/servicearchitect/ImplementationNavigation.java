@@ -98,7 +98,7 @@ final class ImplementationNavigation {
 
     // Called on EDT: capture UI settings before doing index work on a pooled thread.
     static void open(Project project, Path authoringRoot, JsonObject snapshot, JsonObject selection,
-                     String override, BooleanSupplier current) {
+                     String override, BooleanSupplier current, java.awt.Component owner) {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
                 JsonObject services = snapshot.getAsJsonObject("implementations");
@@ -109,24 +109,24 @@ final class ImplementationNavigation {
                 Path root = authoringRoot.resolve(directory).toRealPath();
                 List<Candidate> candidates = DumbService.getInstance(project).runReadActionInSmartMode(() -> find(project, root, targets));
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    if (project.isDisposed() || !current.getAsBoolean()) return;
+                    if (project.isDisposed() || !current.getAsBoolean() || !NavigationUi.available(owner)) return;
                     if (candidates.isEmpty()) {
-                        Messages.showInfoMessage(project, "Implementation not found under " + root + ". Check the generated project directory and language support, and wait for indexing.", "Service Architect");
+                        Messages.showInfoMessage(owner, "Implementation not found under " + root + ". Check the generated project directory and language support, and wait for indexing.", "Service Architect");
                         return;
                     }
                     java.util.function.Consumer<Candidate> navigate = item -> {
-                        if (!project.isDisposed() && current.getAsBoolean() && item.file().isValid())
+                        if (!project.isDisposed() && current.getAsBoolean() && NavigationUi.available(owner) && item.file().isValid())
                             FileEditorManager.getInstance(project).openTextEditor(new OpenFileDescriptor(project, item.file(), item.offset()), true);
                     };
                     if (candidates.size() == 1) navigate.accept(candidates.getFirst());
-                    else JBPopupFactory.getInstance().createPopupChooserBuilder(candidates)
-                        .setTitle("Select business implementation").setItemChosenCallback(item -> navigate.accept(item)).createPopup().showInFocusCenter();
+                    else NavigationUi.show(JBPopupFactory.getInstance().createPopupChooserBuilder(candidates)
+                        .setTitle("Select business implementation").setItemChosenCallback(item -> navigate.accept(item)).createPopup(), owner);
                 });
             } catch (com.intellij.openapi.progress.ProcessCanceledException canceled) {
                 throw canceled;
             } catch (Exception error) {
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    if (!project.isDisposed() && current.getAsBoolean()) Messages.showWarningDialog(project, error.getMessage(), "Service Architect");
+                    if (!project.isDisposed() && current.getAsBoolean() && NavigationUi.available(owner)) Messages.showWarningDialog(owner, error.getMessage(), "Service Architect");
                 });
             }
         });

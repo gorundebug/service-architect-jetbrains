@@ -691,7 +691,7 @@ final class GraphToolWindow implements Disposable {
                     ApplicationManager.getApplication().invokeLater(() -> {
                         if (!disposed && selectedSnapshot != null && snapshotRevision.equals(item.get("revision").getAsString()))
                             ImplementationNavigation.open(project, authoringRoot, selectedSnapshot, item, outputDirectory.getText(),
-                                () -> !disposed && snapshotRevision.equals(item.get("revision").getAsString()));
+                                () -> !disposed && snapshotRevision.equals(item.get("revision").getAsString()), panel);
                     });
                     return;
                 }
@@ -719,12 +719,12 @@ final class GraphToolWindow implements Disposable {
                 int line = Math.max(0, location.get("line").getAsInt() - 1);
                 int column = Math.max(0, location.get("column").getAsInt() - 1);
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    if (!disposed) FileEditorManager.getInstance(project).openTextEditor(
+                    if (!disposed && NavigationUi.available(panel) && snapshotRevision.equals(item.get("revision").getAsString())) FileEditorManager.getInstance(project).openTextEditor(
                         new OpenFileDescriptor(project, virtualFile, line, column), true);
                 });
             } catch (Exception error) {
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    if (!disposed) Messages.showWarningDialog(project, error.getMessage(), "Service Architect");
+                    if (!disposed && NavigationUi.available(panel)) Messages.showWarningDialog(panel, error.getMessage(), "Service Architect");
                 });
             }
         });
@@ -740,10 +740,10 @@ final class GraphToolWindow implements Disposable {
     }
 
     void showMarker(GraphLineMarkerProvider.Context expected, com.intellij.openapi.editor.Document document,
-                    long stamp, List<EditorGraphNavigation.Node> nodes) {
+                    long stamp, List<EditorGraphNavigation.Node> nodes, java.awt.Component owner) {
         if (editorNavigation == null) return;
         editorNavigation.showNodes(expected.snapshot(), nodes,
-            () -> expected.equals(markerContext()) && document.getModificationStamp() == stamp);
+            () -> expected.equals(markerContext()) && document.getModificationStamp() == stamp, owner);
     }
 
     private void restartMarkers() {

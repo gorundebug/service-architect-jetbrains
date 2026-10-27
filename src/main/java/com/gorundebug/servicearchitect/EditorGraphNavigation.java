@@ -88,14 +88,14 @@ final class EditorGraphNavigation implements Disposable {
 
     void show() { timer.stop(); update(true); }
 
-    void showNodes(JsonObject current, List<Node> nodes, BooleanSupplier fresh) {
+    void showNodes(JsonObject current, List<Node> nodes, BooleanSupplier fresh, java.awt.Component owner) {
         timer.stop();
         long request = revision.incrementAndGet();
-        if (nodes.isEmpty() || !isCurrent(request, current) || !fresh.getAsBoolean()) return;
+        if (nodes.isEmpty() || !isCurrent(request, current) || !fresh.getAsBoolean() || !NavigationUi.available(owner)) return;
         if (nodes.size() == 1) send(current, nodes, nodes.getFirst());
-        else JBPopupFactory.getInstance().createPopupChooserBuilder(nodes).setTitle("Show in Graph — select a node")
-            .setItemChosenCallback(node -> { if (isCurrent(request, current) && fresh.getAsBoolean()) send(current, nodes, node); })
-            .createPopup().showInFocusCenter();
+        else NavigationUi.show(JBPopupFactory.getInstance().createPopupChooserBuilder(nodes).setTitle("Show in Graph — select a node")
+            .setItemChosenCallback(node -> { if (isCurrent(request, current) && fresh.getAsBoolean() && NavigationUi.available(owner)) send(current, nodes, node); })
+            .createPopup(), owner);
     }
 
     private void update(boolean focus) {
@@ -107,6 +107,7 @@ final class EditorGraphNavigation implements Disposable {
         if (editor == null || editor.isDisposed() || current == null || authoring == null) return;
         lastEditor = editor;
         Editor captured = editor;
+        var owner = captured.getContentComponent();
         var document = editor.getDocument();
         VirtualFile file = FileDocumentManager.getInstance().getFile(document);
         if (file == null) return;
@@ -132,19 +133,20 @@ final class EditorGraphNavigation implements Disposable {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isCurrent(request, current) || captured.isDisposed() || document.getModificationStamp() != stamp) return;
                     if (!focus) { send(current, result, null); return; }
+                    if (!NavigationUi.available(owner)) return;
                     if (result.isEmpty()) {
-                        Messages.showInfoMessage(project, stale ? "Refresh the graph after saving Python DSL changes." :
+                        Messages.showInfoMessage(owner, stale ? "Refresh the graph after saving Python DSL changes." :
                             "No graph node is associated with this code. Refresh the graph and check the generated project directory.", "Service Architect");
                     } else if (result.size() == 1) send(current, result, result.getFirst());
-                    else JBPopupFactory.getInstance().createPopupChooserBuilder(result).setTitle("Show in Graph — select a node")
-                        .setItemChosenCallback(node -> { if (isCurrent(request, current)) send(current, result, node); })
-                        .createPopup().showInFocusCenter();
+                    else NavigationUi.show(JBPopupFactory.getInstance().createPopupChooserBuilder(result).setTitle("Show in Graph — select a node")
+                        .setItemChosenCallback(node -> { if (isCurrent(request, current) && NavigationUi.available(owner)) send(current, result, node); })
+                        .createPopup(), owner);
                 });
             } catch (com.intellij.openapi.progress.ProcessCanceledException canceled) { throw canceled; }
             catch (Exception error) {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!isCurrent(request, current)) return;
-                    if (focus) Messages.showWarningDialog(project, error.getMessage(), "Service Architect");
+                    if (focus && NavigationUi.available(owner)) Messages.showWarningDialog(owner, error.getMessage(), "Service Architect");
                     else send(current, List.of(), null);
                 });
             }
