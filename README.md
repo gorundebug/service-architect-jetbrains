@@ -1,5 +1,9 @@
 # Service Architect for JetBrains IDEs
 
+Version 0.1.19 bundles the updated Python DSL, including typed interval schedules
+and evaluated source-navigation mappings. Its private CLI environment is 0.1.16;
+an explicitly configured external CLI must be updated separately.
+
 ## Create a project
 
 For an existing architecture, click **Import from YAML** beside **Create Project**,
@@ -132,7 +136,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.15`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.16`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).
