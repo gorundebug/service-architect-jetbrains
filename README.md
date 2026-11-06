@@ -1,7 +1,7 @@
 # Service Architect for JetBrains IDEs
 
-Version 0.1.24 bundles the updated Python DSL, including Custom endpoint `enabled`, typed interval schedules,
-evaluated source-navigation mappings and optional Go SubStream call analysis. Its private CLI environment is 0.1.20;
+Version 0.1.25 bundles the updated Python DSL, including Custom endpoint `enabled`, typed interval schedules,
+evaluated source-navigation mappings and optional Go SubStream call analysis. Its private CLI environment is 0.1.21;
 an explicitly configured external CLI must be updated separately.
 
 ## Create a project
@@ -136,7 +136,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.20`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.21`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).
@@ -161,7 +161,7 @@ Do not edit the packaged bundles directly.
 
 ## SubStream calls from code (Go)
 
-Only clicking **Refresh** analyzes all Go services with SubStreams, after displaying
+Only clicking **Refresh graph & calls** analyzes all Go services with SubStreams, after displaying
 the model. Opening the graph does not start call analysis. Analysis uses the
 Python model and saved Go sources, including
 makers, helpers and interface calls. Purple dashed links show possible calls;
@@ -176,3 +176,8 @@ workspace. The analyzer is compiled and cached on first use; Go may download
 its pinned analysis dependencies. Other languages are not supported yet.
 Dynamic/reflection-dependent calls may be unresolved, and static analysis may
 report several possible targets. Use **Hide code calls** to remove the overlay.
+
+Refresh now explains that it reloads the Python model and analyzes saved Go code.
+Call-analysis progress and errors remain visible above the graph on every sidebar tab.
+Errors include dependency diagnostics; analysis uses the project’s ordinary go.work/go.mod.
+Default Go template acronym spelling (for example DSP → Dsp) is recognized.

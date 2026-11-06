@@ -96,7 +96,8 @@ final class GraphToolWindow implements Disposable {
         projects.setToolTipText("Directory containing the selected .service-architect/project.yaml");
         refreshProjects();
         toolbar.add(projects, BorderLayout.CENTER);
-        JButton refresh = new JButton("Refresh");
+        JButton refresh = new JButton("Refresh graph & calls");
+        refresh.setToolTipText("Reload the Python model and find SubStream calls in saved Go code. Analysis runs in the background only when you refresh.");
         refresh.addActionListener(event -> {
             refreshProjects();
             refresh(true);
