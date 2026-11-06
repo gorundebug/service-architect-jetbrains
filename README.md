@@ -1,7 +1,7 @@
 # Service Architect for JetBrains IDEs
 
-Version 0.1.19 bundles the updated Python DSL, including typed interval schedules
-and evaluated source-navigation mappings. Its private CLI environment is 0.1.16;
+Version 0.1.24 bundles the updated Python DSL, including Custom endpoint `enabled`, typed interval schedules,
+evaluated source-navigation mappings and optional Go SubStream call analysis. Its private CLI environment is 0.1.20;
 an explicitly configured external CLI must be updated separately.
 
 ## Create a project
@@ -136,7 +136,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.16`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.20`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).
@@ -158,3 +158,21 @@ workspace root. Run it with `--check` before packaging to verify both IDE copies
 For an isolated Designer release checkout, pass its built asset directory with
 `--source-dir` to both sync and check.
 Do not edit the packaged bundles directly.
+
+## SubStream calls from code (Go)
+
+Only clicking **Refresh** analyzes all Go services with SubStreams, after displaying
+the model. Opening the graph does not start call analysis. Analysis uses the
+Python model and saved Go sources, including
+makers, helpers and interface calls. Purple dashed links show possible calls;
+select a link to inspect its source chain. Shared functions can link multiple
+business nodes; calls without a business ancestor are omitted.
+
+Save files first. Edits do not invalidate or rebuild the overlay: it stays until
+Refresh or explicit hiding. No code/configuration watchers are registered for
+call analysis, and no model links are added. This
+first implementation requires Go 1.25+ on the CLI PATH and a buildable Go
+workspace. The analyzer is compiled and cached on first use; Go may download
+its pinned analysis dependencies. Other languages are not supported yet.
+Dynamic/reflection-dependent calls may be unresolved, and static analysis may
+report several possible targets. Use **Hide code calls** to remove the overlay.

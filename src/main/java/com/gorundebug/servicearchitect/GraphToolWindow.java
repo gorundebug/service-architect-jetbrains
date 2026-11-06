@@ -57,6 +57,7 @@ import java.util.function.Consumer;
 final class GraphToolWindow implements Disposable {
     static final com.intellij.openapi.util.Key<GraphToolWindow> INSTANCE = com.intellij.openapi.util.Key.create("serviceArchitect.graph");
     private EditorGraphNavigation editorNavigation;
+    private SubstreamCalls substreamCalls;
     private volatile String markerOutput = "";
     private final java.util.Map<com.intellij.psi.PsiFile, Boolean> markerFiles =
         java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
@@ -98,7 +99,7 @@ final class GraphToolWindow implements Disposable {
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> {
             refreshProjects();
-            refresh();
+            refresh(true);
         });
         JPanel projectActions = new JPanel(new FlowLayout(FlowLayout.TRAILING));
         JButton create = new JButton("Create Project");
@@ -180,6 +181,13 @@ final class GraphToolWindow implements Disposable {
             return;
         }
         browser = new JBCefBrowser();
+        substreamCalls = new SubstreamCalls(() -> implementationSnapshot, result -> {
+            if (!disposed && snapshotRevision.equals(result.get("revision").getAsString()))
+                browser.getCefBrowser().executeJavaScript(
+                    "window.dispatchEvent(new CustomEvent('service-architect:code-calls',{detail:" + result + "}));",
+                    browser.getCefBrowser().getURL(), 0);
+        });
+        com.intellij.openapi.util.Disposer.register(this, substreamCalls);
         editorNavigation = new EditorGraphNavigation(project, () -> selectedRoot, () -> implementationSnapshot,
             () -> outputDirectory.getText(), event -> {
                 if (disposed || !snapshotRevision.equals(event.get("revision").getAsString())) return;
@@ -199,7 +207,7 @@ final class GraphToolWindow implements Disposable {
         readyQuery = JBCefJSQuery.create((JBCefBrowserBase) browser);
         navigateQuery = JBCefJSQuery.create((JBCefBrowserBase) browser);
         readyQuery.addHandler(request -> {
-            ApplicationManager.getApplication().invokeLater(this::refresh);
+            ApplicationManager.getApplication().invokeLater(() -> refresh("refresh".equals(request)));
             return null;
         });
         navigateQuery.addHandler(request -> {
@@ -207,6 +215,7 @@ final class GraphToolWindow implements Disposable {
             return null;
         });
         String bridge = "window.addEventListener('load',function(){" + readyQuery.inject("'ready'") + "},{once:true});" +
+            "window.addEventListener('service-architect:refresh',function(){" + readyQuery.inject("'refresh'") + "});" +
             "window.addEventListener('service-architect:selection',function(event){" +
             navigateQuery.inject("JSON.stringify(event.detail)") + "});";
         String html = "<!doctype html><html><head><meta charset=\"utf-8\"><style>" +
@@ -494,7 +503,8 @@ final class GraphToolWindow implements Disposable {
         CompletableFuture<String> stdout = CompletableFuture.supplyAsync(() -> read(process.getInputStream()));
         CompletableFuture<String> stderr = CompletableFuture.supplyAsync(() ->
             onProgress == null ? read(process.getErrorStream()) : readProgress(process.getErrorStream(), onProgress));
-        long timeout = args.get(0).equals("ide-generate") ? Duration.ofMinutes(45).toMillis() : Duration.ofSeconds(60).toMillis();
+        long timeout = args.get(0).equals("ide-generate") ? Duration.ofMinutes(45).toMillis()
+            : args.get(0).equals("ide-substream-calls") ? Duration.ofMinutes(5).toMillis() : Duration.ofSeconds(60).toMillis();
         if (!process.waitFor(timeout, TimeUnit.MILLISECONDS)) {
             process.descendants().forEach(ProcessHandle::destroyForcibly);
             process.destroyForcibly();
@@ -621,7 +631,10 @@ final class GraphToolWindow implements Disposable {
         });
     }
 
-    private void refresh() {
+    private void refresh() { refresh(false); }
+
+    private void refresh(boolean analyzeCalls) {
+        if (substreamCalls != null) substreamCalls.invalidate();
         if (disposed || setupRunning) return;
         if (selectedRoot == null) {
             generation.incrementAndGet();
@@ -668,6 +681,7 @@ final class GraphToolWindow implements Disposable {
                         browser.getCefBrowser().executeJavaScript(
                             "window.dispatchEvent(new CustomEvent('service-architect:snapshot',{detail:" + snapshot + "}));",
                             browser.getCefBrowser().getURL(), 0);
+                        if (analyzeCalls) substreamCalls.run(root(), outputDirectory.getText(), snapshot, this::invoke);
                     } else {
                         Messages.showErrorDialog(project,
                             response.has("message") ? response.get("message").getAsString() : "Cannot export Python graph",
