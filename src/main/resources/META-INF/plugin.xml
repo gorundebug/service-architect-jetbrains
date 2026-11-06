@@ -6,6 +6,7 @@
   <idea-version since-build="261"/>
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.jcef</depends>
+  <depends optional="true" config-file="service-architect-go.xml">org.jetbrains.plugins.go</depends>
   <extensions defaultExtensionNs="com.intellij">
     <codeInsight.lineMarkerProvider language="" implementationClass="com.gorundebug.servicearchitect.GraphLineMarkerProvider"/>
     <toolWindow id="Service Architect" anchor="right"

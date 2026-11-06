@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.gorundebug.servicearchitect"
-version = "0.1.25"
+version = "0.1.26"
 
 repositories {
     mavenCentral()
@@ -17,6 +17,7 @@ dependencies {
     intellijPlatform {
         val localIde = providers.gradleProperty("localIde").orNull
         if (localIde != null) local(localIde) else goland("2026.1.3")
+        bundledPlugin("org.jetbrains.plugins.go")
     }
 }
 

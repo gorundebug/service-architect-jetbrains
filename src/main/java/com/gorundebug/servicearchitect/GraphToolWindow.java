@@ -500,6 +500,11 @@ final class GraphToolWindow implements Disposable {
         builder.command().add(command(root));
         builder.command().addAll(args);
         builder.directory(root.toFile());
+        if (args.getFirst().equals("ide-substream-calls")) {
+            int outputIndex = args.indexOf("--output-dir");
+            Path generatedRoot = outputIndex < 0 ? root : root.resolve(args.get(outputIndex + 1)).normalize();
+            GoToolchainEnvironment.configure(project, generatedRoot, builder.environment());
+        }
         Process process = builder.start();
         CompletableFuture<String> stdout = CompletableFuture.supplyAsync(() -> read(process.getInputStream()));
         CompletableFuture<String> stderr = CompletableFuture.supplyAsync(() ->
