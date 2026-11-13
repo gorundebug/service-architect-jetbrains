@@ -1,7 +1,7 @@
 # Service Architect for JetBrains IDEs
 
-Version 0.1.26 bundles the updated Python DSL, including Custom endpoint `enabled`, typed interval schedules,
-evaluated source-navigation mappings and optional Go SubStream call analysis. Its private CLI environment is 0.1.21;
+Version 0.1.27 bundles the updated Python DSL and EmbeddedDesigner 0.1.16,
+including corrected SubStream Input result bindings. Its private CLI environment is 0.1.22;
 an explicitly configured external CLI must be updated separately.
 
 ## Create a project
@@ -136,7 +136,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.21`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.22`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).
