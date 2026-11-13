@@ -1,7 +1,7 @@
 # Service Architect for JetBrains IDEs
 
-Version 0.1.27 bundles the updated Python DSL and EmbeddedDesigner 0.1.16,
-including corrected SubStream Input result bindings. Its private CLI environment is 0.1.22;
+Version 0.1.28 bundles EmbeddedDesigner 0.1.17 with matching SubStream visual
+validation and scope-aware result selectors. Its private CLI environment remains 0.1.22;
 an explicitly configured external CLI must be updated separately.
 
 ## Create a project
