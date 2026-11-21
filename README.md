@@ -171,7 +171,12 @@ the image; it does not mount source directories. CLI sources from sibling
 `SA_DSL_SOURCE=/path/to/sa-python-dsl` for Docker or `-PcliSource=...` for Gradle.
 Set `DEPENDENCY_DOCKER_REGISTRY`
 to use a mirrored Gradle base image. The target platform is GoLand 2026.1.3;
-`plugin.xml` permits compatible 2026.1 IDEs. For interactive local builds with
+`plugin.xml` sets minimum build 261 without an upper build limit.
+Release 0.1.33 also compiles against GoLand 2026.3 (263.7307.211) using
+its bundled JBR 25 and Java 21 bytecode. This is a compile check, not a full
+IDE UI acceptance run. The distributed package retains the 2026.1.3 API baseline.
+For interactive local builds targeting 2026.3, use JDK 25 to read its platform classes.
+For interactive local builds with
 Gradle 9+, pass `-PlocalIde=/Applications/GoLand.app` on macOS to use an
 installed IDE instead of downloading it.
 
