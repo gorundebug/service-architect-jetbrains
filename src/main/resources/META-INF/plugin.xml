@@ -3,7 +3,7 @@
   <name>Service Architect</name>
   <vendor>gorundebug</vendor>
   <description>Read-only graph navigation for typed Service Architect Python projects.</description>
-  <idea-version since-build="261"/>
+  <idea-version since-build="263"/>
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.jcef</depends>
   <depends optional="true" config-file="service-architect-go.xml">org.jetbrains.plugins.go</depends>

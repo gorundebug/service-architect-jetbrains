@@ -1,12 +1,8 @@
 # Service Architect for JetBrains IDEs
 
-Release 0.1.29: official NATS Core/JetStream, Pulsar, Redis Streams and
-RabbitMQ capabilities; TypeScript RabbitMQ is sink-only. Bundles Designer
-0.1.19 and managed CLI 0.1.24. Framework release: v0.2.182.
-
-
-The current source tree for version 0.1.28 embeds Designer assets matching the
-0.1.18 build, including native broker properties. Its private CLI environment remains 0.1.22;
+Release 0.1.35 targets GoLand 2026.3.0.1 (minimum IDE build 263).
+Docker builds use Gradle 9.7 with JDK 25 and an explicit bundled JCEF dependency.
+The plugin includes Designer 0.1.24 and managed CLI environment 0.1.27;
 an explicitly configured external CLI must be updated separately.
 
 ## Message brokers
@@ -170,12 +166,10 @@ the image; it does not mount source directories. CLI sources from sibling
 `../sa-python-dsl` are bundled into the plugin. Override their location with
 `SA_DSL_SOURCE=/path/to/sa-python-dsl` for Docker or `-PcliSource=...` for Gradle.
 Set `DEPENDENCY_DOCKER_REGISTRY`
-to use a mirrored Gradle base image. The target platform is GoLand 2026.1.3;
-`plugin.xml` sets minimum build 261 without an upper build limit.
-Release 0.1.33 also compiles against GoLand 2026.3 (263.7307.211) using
-its bundled JBR 25 and Java 21 bytecode. This is a compile check, not a full
-IDE UI acceptance run. The distributed package retains the 2026.1.3 API baseline.
-For interactive local builds targeting 2026.3, use JDK 25 to read its platform classes.
+to use a mirrored Gradle base image. Docker uses Gradle 9.7 with JDK 25
+and targets GoLand 2026.3.0.1. Java bytecode remains at version 21.
+`plugin.xml` sets minimum IDE build 263 without an upper build limit.
+For interactive local builds, use JDK 25 to read the platform classes.
 For interactive local builds with
 Gradle 9+, pass `-PlocalIde=/Applications/GoLand.app` on macOS to use an
 installed IDE instead of downloading it.

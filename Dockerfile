@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG BUILD_IMAGE=docker.io/library/gradle:9.7-jdk21
+ARG BUILD_IMAGE=docker.io/library/gradle:9.7-jdk25
 FROM ${BUILD_IMAGE} AS build
 
 WORKDIR /home/gradle/project
