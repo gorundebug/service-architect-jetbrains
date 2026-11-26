@@ -1,8 +1,8 @@
 # Service Architect for JetBrains IDEs
 
-Release 0.1.35 targets GoLand 2026.3.0.1 (minimum IDE build 263).
+Release 0.1.36 targets GoLand 2026.3.0.1 (minimum IDE build 263).
 Docker builds use Gradle 9.7 with JDK 25 and an explicit bundled JCEF dependency.
-The plugin includes Designer 0.1.24 and managed CLI environment 0.1.27;
+The plugin includes Designer 0.1.25 and managed CLI environment 0.1.27;
 an explicitly configured external CLI must be updated separately.
 
 ## Message brokers
