@@ -159,7 +159,7 @@ directory. Use a project environment for projects with additional Python depende
 Clear the override to return to automatic selection.
 
 The private environment is versioned under the IDE system directory:
-`service-architect/cli/0.1.22`. An interrupted installation is not considered ready.
+`service-architect/cli/0.1.27`. An interrupted installation is not considered ready.
 The plugin executes Python when refreshing, navigating or running CLI actions,
 and blocks these actions while the IDE project is untrusted.
 The embedded viewer requires JCEF (bundled with standard JetBrains IDE builds).
